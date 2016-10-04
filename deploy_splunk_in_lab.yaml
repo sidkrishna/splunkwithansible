@@ -1,0 +1,50 @@
+---
+# usage: ansible-playbook -vvv --extra-vars="targetip=10.254.2.169 username=brocade bwcip=10.254.2.86" my_first_playbook.yaml
+- hosts: "{{ targetip }}" 
+  user: "{{ username }}" 
+  tasks:
+
+      - name: Is splunk Installed?
+        stat: path=/opt/splunk
+        register: is_splunk_installed
+        ignore_errors: True
+
+      - name: Check whether host entry for bwc exists
+        command: grep -inr "{{ bwcip }}" /etc/hosts
+        register: does_host_entry_exist 
+        always_run: True
+        ignore_errors: True
+        changed_when: False
+        become: yes
+
+      - name: Add host entry for bwc if does not exist  
+        shell: sed -i "2i{{ bwcip }}     bwc.solutions.brocade.com bwc" /etc/hosts 
+        become: yes
+        when: does_host_entry_exist.rc != 0
+
+      - name: Stop splunk if already running 
+        shell: /opt/splunk/bin/splunk stop 
+        become: yes
+        ignore_errors: True
+
+      - name: Remove splunk dir's if already installed
+        file: path=/opt/{{ item }} state=absent
+        become: yes
+        with_items:
+            - splunkdata
+            - splunk
+        when: is_splunk_installed.stat.exists == True 
+
+      - name: Untar splunk package to /opt 
+        unarchive: src=/home/{{ username }}/splunk-6.5.0-59c8927def0f-Linux-x86_64.tgz dest=/opt/ remote_src=yes 
+        become: yes
+
+      - name: Copy over splunk configs
+        copy: src={{ item }} dest=/opt/splunk/etc/apps/search/local/ owner=506 group=506 mode=777
+        with_fileglob:
+          - /home/brocade/splunkconfigs/*
+        become: yes
+
+      - name: Start splunk 
+        shell: /opt/splunk/bin/splunk start --accept-license 
+        become: yes
