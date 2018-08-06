@@ -1,5 +1,5 @@
 ---
-# usage: ansible-playbook -vvv --extra-vars="targetip=10.254.2.169 username=brocade bwcip=10.254.2.86" my_first_playbook.yaml
+# test usage: ansible-playbook -vvv --extra-vars="targetip=10.254.2.169 username=brocade bwcip=10.254.2.86" my_first_playbook.yaml
 - hosts: "{{ targetip }}" 
   user: "{{ username }}" 
   tasks:
